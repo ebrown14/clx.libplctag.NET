@@ -2,6 +2,7 @@
 using libplctag.DataTypes;
 using libplctag.NativeImport;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -10,7 +11,7 @@ using System.Threading.Tasks;
 
 namespace clx.libplctag.NET
 {
-    public class PLC
+    public class PLC : IDisposable
     {
         private readonly string _ipAddress = "192.168.1.196";
         private readonly string _path = "1,0";
@@ -18,7 +19,7 @@ namespace clx.libplctag.NET
         public int Timeout { get; set; } = 5;
         // public Response<string> _response { get; set; }
         // public Response<string> _failure { get; set; }
-        
+        private readonly ConcurrentDictionary<string, object> _tags = new ConcurrentDictionary<string, object>();
         public PLC(string ipAddress)
         {
             _ipAddress = ipAddress;
@@ -900,22 +901,28 @@ namespace clx.libplctag.NET
 
         public async Task<Response<T>> ReadTag<M, T>(string tagName) where M : IPlcMapper<T>, new()
         {
-            var tag = new Tag<M, T>()
-            {
-                Name = tagName,
-                Gateway = _ipAddress,
-                Path = _path,
-                PlcType = PlcType.ControlLogix,
-                Protocol = Protocol.ab_eip,
-                Timeout = TimeSpan.FromSeconds(Timeout)
-            };
 
+            Tag<M, T> tag;
+            if (_tags.TryGetValue(tagName, out var temp))
+                tag = temp as Tag<M, T>;
+            else
+            {
+                tag = _tags.GetOrAdd(tagName, key => new Tag<M, T>()
+                {
+                    Name = key,
+                    Gateway = _ipAddress,
+                    Path = _path,
+                    PlcType = PlcType.ControlLogix,
+                    Protocol = Protocol.ab_eip,
+                    Timeout = TimeSpan.FromSeconds(Timeout)
+                }) as Tag<M, T>;
+            }
+            
             try
             {
-                await tag.InitializeAsync().ConfigureAwait(false);
                 await tag.ReadAsync().ConfigureAwait(false);
                 var tagValue = tag.Value;
-                tag.Dispose();
+                //tag.Dispose();
 
                 return new Response<T>(tagName, tagValue, "Success");
             }
@@ -975,22 +982,28 @@ namespace clx.libplctag.NET
 
         public async Task<Response<T>> WriteTag<M, T>(string tagName, T value) where M : IPlcMapper<T>, new()
         {
-            var tag = new Tag<M, T>()
+            Tag<M, T> tag;
+            if (_tags.TryGetValue(tagName, out var temp))
+                tag = temp as Tag<M, T>;
+            else
             {
-                Name = tagName,
-                Gateway = _ipAddress,
-                Path = _path,
-                PlcType = PlcType.ControlLogix,
-                Protocol = Protocol.ab_eip,
-                Timeout = TimeSpan.FromSeconds(Timeout)
-            };
+                tag = _tags.GetOrAdd(tagName, key => new Tag<M, T>()
+                {
+                    Name = key,
+                    Gateway = _ipAddress,
+                    Path = _path,
+                    PlcType = PlcType.ControlLogix,
+                    Protocol = Protocol.ab_eip,
+                    Timeout = TimeSpan.FromSeconds(Timeout)
+                }) as Tag<M, T>;
+            }
 
             try
             {
                 await tag.InitializeAsync().ConfigureAwait(false);
                 tag.Value = value;
                 await tag.WriteAsync().ConfigureAwait(false);
-                tag.Dispose();
+                //tag.Dispose();
                 return new Response<T>(tagName, "Success");
             }
             catch (Exception e)
@@ -1728,6 +1741,18 @@ namespace clx.libplctag.NET
             catch (Exception e)
             {
                 return new Response<dynamic>(tagName, e.Message);
+            }
+        }
+
+        public void Dispose()
+        {
+            // TODO release managed resources here
+            foreach (var key in _tags.Keys)
+            {
+                if (_tags[key] is IDisposable disposable)
+                {
+                    disposable.Dispose();
+                }
             }
         }
     }

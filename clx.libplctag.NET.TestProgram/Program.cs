@@ -21,20 +21,27 @@ namespace clx.libplctag.NET.TestProgram
              * This is just a playground for testing the library.
              */
 
-            var myPLC = new PLC("192.168.1.196", 2);
-            /*var result = await myPLC.Read("BaseBOOL", TagType.Bool).ConfigureAwait(false);
-            Console.WriteLine(result);
+            var myPLC = new PLC("");
+            int i = 0;
+            while (i < 5)
+            {
+                var result = await myPLC.Read("", TagType.Real).ConfigureAwait(false);
+                Console.WriteLine(result);
 
-            var result0 = await myPLC.Read("BaseBOOLsdfsdf", TagType.Bool);
-            Console.WriteLine(result0);
+                var result0 = await myPLC.Read("", TagType.Real);
+                Console.WriteLine(result0);
 
-            var result2 = await myPLC.Read("BaseBOOL", TagType.Bit);
-            Console.WriteLine(result2);
+                var result2 = await myPLC.Read("", TagType.Real);
+                Console.WriteLine(result2);
 
-            var result3 = await myPLC.Read("BaseDINT", TagType.Dint);
-            Console.WriteLine(result3);
+                var result3 = await myPLC.Read("", TagType.Real);
+                Console.WriteLine(result3);
 
-            var result33 = await myPLC.Read("BaseDINTssdfsdf", TagType.Dint).ConfigureAwait(false);
+                i++;
+            }
+            myPLC.Dispose();
+            Console.WriteLine();
+            /*var result33 = await myPLC.Read("BaseDINTssdfsdf", TagType.Dint).ConfigureAwait(false);
             Console.WriteLine(result33);
 
             var result4 = await myPLC.Read("BaseINT", TagType.Int);
@@ -340,7 +347,7 @@ namespace clx.libplctag.NET.TestProgram
             Console.WriteLine("[{0}]", string.Join(", ", result));
             */
 
-            var alist = new List<bool>(Randomizer.GenRandBoolList(128));
+            /*var alist = new List<bool>(Randomizer.GenRandBoolList(128));
             //var result = await myPLC.Read("BaseBOOLArray", TagType.Bool, 128);
             //var result = await myPLC.ReadTag<BoolPlcMapper, bool[]>("BaseBOOLArray", new int[] { 128 });
             //var result = await myPLC.WriteTag<BoolPlcMapper, bool[]>("BaseBOOLArray", alist.ToArray(),new int[] { 128 });
@@ -349,7 +356,7 @@ namespace clx.libplctag.NET.TestProgram
             Console.WriteLine(result.Value.Length);
             
             var result2 = await myPLC.Write("BaseBOOLArray[0]", TagType.Bool, alist.ToArray(), 128);
-            Console.WriteLine("[{0}]", string.Join(", ", result2));
+            Console.WriteLine("[{0}]", string.Join(", ", result2));*/
             
         }
     }
