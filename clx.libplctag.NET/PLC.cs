@@ -1746,7 +1746,6 @@ namespace clx.libplctag.NET
 
         public void Dispose()
         {
-            // TODO release managed resources here
             foreach (var key in _tags.Keys)
             {
                 if (_tags[key] is IDisposable disposable)
