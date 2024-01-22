@@ -1744,6 +1744,16 @@ namespace clx.libplctag.NET
             }
         }
 
+        public void ReleaseTagIfExists(string tagName)
+        {
+            if (_tags.TryGetValue(tagName, out var tag))
+            {
+                _tags.TryRemove(tagName, out var temp);
+                if (tag is IDisposable disposable)
+                    disposable.Dispose();
+            }
+        
+        }
         public void Dispose()
         {
             foreach (var key in _tags.Keys)

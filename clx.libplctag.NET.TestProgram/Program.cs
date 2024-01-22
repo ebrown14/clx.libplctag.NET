@@ -39,6 +39,7 @@ namespace clx.libplctag.NET.TestProgram
 
                 i++;
             }
+            myPLC.ReleaseTagIfExists("");
             myPLC.Dispose();
             Console.WriteLine();
             /*var result33 = await myPLC.Read("BaseDINTssdfsdf", TagType.Dint).ConfigureAwait(false);
