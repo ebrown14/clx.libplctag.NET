@@ -55,7 +55,7 @@ namespace clx.libplctag.NET
                     if (indexMatchBit.Success)
                     {
                         var index = Int32.Parse(indexMatchBit.Value);
-                        return await _ReadBoolArraySingle(tagName.Split("[")[0], index).ConfigureAwait(false);
+                        return await _ReadBoolArraySingle(tagName.Split(new[] {'['}, StringSplitOptions.None)[0], index).ConfigureAwait(false);
                     }
 
                     return await _ReadTag<BoolPlcMapper, bool>(tagName);
@@ -397,7 +397,7 @@ namespace clx.libplctag.NET
                     if (indexMatchBit.Success)
                     {
                         var index = Int32.Parse(indexMatchBit.Value);
-                        return await _WriteBoolArraySingle(tagName.Split("[")[0], (bool) value, index)
+                        return await _WriteBoolArraySingle(tagName.Split(new[]{'['}, StringSplitOptions.None)[0], (bool) value, index)
                             .ConfigureAwait(false);
                     }
 
@@ -461,7 +461,7 @@ namespace clx.libplctag.NET
                     if (indexMatchBit.Success)
                     {
                         var index = Int32.Parse(indexMatchBit.Value);
-                        return await _WriteBoolArraySingle(tagName.Split("[")[0], value, index)
+                        return await _WriteBoolArraySingle(tagName.Split(new[] {'['}, StringSplitOptions.None)[0], value, index)
                             .ConfigureAwait(false);
                     }
 
@@ -741,7 +741,7 @@ namespace clx.libplctag.NET
                     if (startIndexMatch.Success)
                     {
                         var startIndex = Int32.Parse(startIndexMatch.Value);
-                        return await WriteBoolArrayRange(tagName.Split("[")[0], (bool[]) value, arrayLength,
+                        return await WriteBoolArrayRange(tagName.Split(new[]{'['}, StringSplitOptions.None)[0], (bool[]) value, arrayLength,
                             startIndex);
                     }
 
@@ -763,7 +763,7 @@ namespace clx.libplctag.NET
                     if (startIndexMatch.Success)
                     {
                         var startIndex = Int32.Parse(startIndexMatch.Value);
-                        return await WriteDintArrayRange(tagName.Split("[")[0], (int[]) value, arrayLength, startIndex);
+                        return await WriteDintArrayRange(tagName.Split(new[]{'['}, StringSplitOptions.None)[0], (int[]) value, arrayLength, startIndex);
                     }
 
                     return await WriteTag<DintPlcMapper, int[]>(tagName, (int[]) value, new int[] {arrayLength})
@@ -784,7 +784,7 @@ namespace clx.libplctag.NET
                     if (startIndexMatch.Success)
                     {
                         var startIndex = Int32.Parse(startIndexMatch.Value);
-                        return await WriteIntArrayRange(tagName.Split("[")[0], (short[]) value, arrayLength,
+                        return await WriteIntArrayRange(tagName.Split(new[]{'['}, StringSplitOptions.None)[0], (short[]) value, arrayLength,
                             startIndex);
                     }
 
@@ -807,7 +807,7 @@ namespace clx.libplctag.NET
                     if (startIndexMatch.Success)
                     {
                         var startIndex = Int32.Parse(startIndexMatch.Value);
-                        return await WriteSintArrayRange(tagName.Split("[")[0], (sbyte[]) value, arrayLength,
+                        return await WriteSintArrayRange(tagName.Split(new[]{'['}, StringSplitOptions.None)[0], (sbyte[]) value, arrayLength,
                             startIndex);
                     }
 
@@ -829,7 +829,7 @@ namespace clx.libplctag.NET
                     if (startIndexMatch.Success)
                     {
                         var startIndex = Int32.Parse(startIndexMatch.Value);
-                        return await WriteLintArrayRange(tagName.Split("[")[0], (long[]) value, arrayLength,
+                        return await WriteLintArrayRange(tagName.Split(new[]{'['}, StringSplitOptions.None)[0], (long[]) value, arrayLength,
                             startIndex);
                     }
 
@@ -851,7 +851,7 @@ namespace clx.libplctag.NET
                     if (startIndexMatch.Success)
                     {
                         var startIndex = Int32.Parse(startIndexMatch.Value);
-                        return await WriteRealArrayRange(tagName.Split("[")[0], (float[]) value, arrayLength,
+                        return await WriteRealArrayRange(tagName.Split(new[]{'['}, StringSplitOptions.None)[0], (float[]) value, arrayLength,
                             startIndex);
                     }
 
@@ -873,7 +873,7 @@ namespace clx.libplctag.NET
                     if (startIndexMatch.Success)
                     {
                         var startIndex = Int32.Parse(startIndexMatch.Value);
-                        return await WriteStringArrayRange(tagName.Split("[")[0], (string[]) value, arrayLength,
+                        return await WriteStringArrayRange(tagName.Split(new[]{'['}, StringSplitOptions.None)[0], (string[]) value, arrayLength,
                             startIndex);
                     }
 
@@ -922,7 +922,6 @@ namespace clx.libplctag.NET
             {
                 await tag.ReadAsync().ConfigureAwait(false);
                 var tagValue = tag.Value;
-                //tag.Dispose();
 
                 return new Response<T>(tagName, tagValue, "Success");
             }
@@ -935,15 +934,21 @@ namespace clx.libplctag.NET
         public async Task<Response<T>> ReadTag<M, T>(string tagName, int[] arrayDim = null)
             where M : IPlcMapper<T>, new()
         {
-            var tag = new Tag<M, T>()
+            Tag<M, T> tag;
+            if (_tags.TryGetValue(tagName, out var temp))
+                tag = temp as Tag<M, T>;
+            else
             {
-                Name = tagName,
-                Gateway = _ipAddress,
-                Path = _path,
-                PlcType = PlcType.ControlLogix,
-                Protocol = Protocol.ab_eip,
-                Timeout = TimeSpan.FromSeconds(Timeout)
-            };
+                tag = _tags.GetOrAdd(tagName, key => new Tag<M, T>()
+                {
+                    Name = key,
+                    Gateway = _ipAddress,
+                    Path = _path,
+                    PlcType = PlcType.ControlLogix,
+                    Protocol = Protocol.ab_eip,
+                    Timeout = TimeSpan.FromSeconds(Timeout)
+                }) as Tag<M, T>;
+            }
 
             // Sanity Check, only support 3 dims in arrays for now
             if (arrayDim.Length > 3)
@@ -967,10 +972,8 @@ namespace clx.libplctag.NET
 
             try
             {
-                await tag.InitializeAsync().ConfigureAwait(false);
                 await tag.ReadAsync().ConfigureAwait(false);
                 var tagValue = tag.Value;
-                tag.Dispose();
 
                 return new Response<T>(tagName, tagValue, "Success");
             }
@@ -1000,10 +1003,8 @@ namespace clx.libplctag.NET
 
             try
             {
-                await tag.InitializeAsync().ConfigureAwait(false);
                 tag.Value = value;
                 await tag.WriteAsync().ConfigureAwait(false);
-                //tag.Dispose();
                 return new Response<T>(tagName, "Success");
             }
             catch (Exception e)
@@ -1015,15 +1016,21 @@ namespace clx.libplctag.NET
         public async Task<Response<string>> WriteTag<M, T>(string tagName, T value, int[] arrayDim = null)
             where M : IPlcMapper<T>, new()
         {
-            var tag = new Tag<M, T>()
+            Tag<M, T> tag;
+            if (_tags.TryGetValue(tagName, out var temp))
+                tag = temp as Tag<M, T>;
+            else
             {
-                Name = tagName,
-                Gateway = _ipAddress,
-                Path = _path,
-                PlcType = PlcType.ControlLogix,
-                Protocol = Protocol.ab_eip,
-                Timeout = TimeSpan.FromSeconds(Timeout)
-            };
+                tag = _tags.GetOrAdd(tagName, key => new Tag<M, T>()
+                {
+                    Name = key,
+                    Gateway = _ipAddress,
+                    Path = _path,
+                    PlcType = PlcType.ControlLogix,
+                    Protocol = Protocol.ab_eip,
+                    Timeout = TimeSpan.FromSeconds(Timeout)
+                }) as Tag<M, T>;
+            }
 
             // Sanity Check, only support 3 dims in arrays for now
             if (arrayDim.Length > 3)
@@ -1047,10 +1054,8 @@ namespace clx.libplctag.NET
 
             try
             {
-                await tag.InitializeAsync().ConfigureAwait(false);
                 tag.Value = value;
                 await tag.WriteAsync().ConfigureAwait(false);
-                tag.Dispose();
                 return new Response<string>(tagName, "Success");
             }
             catch (Exception e)
@@ -1062,15 +1067,21 @@ namespace clx.libplctag.NET
         public async Task<Response<dynamic>> DWriteTag<M, T>(string tagName, T value, int[] arrayDim = null)
             where M : IPlcMapper<T>, new()
         {
-            var tag = new Tag<M, T>()
+            Tag<M, T> tag;
+            if (_tags.TryGetValue(tagName, out var temp))
+                tag = temp as Tag<M, T>;
+            else
             {
-                Name = tagName,
-                Gateway = _ipAddress,
-                Path = _path,
-                PlcType = PlcType.ControlLogix,
-                Protocol = Protocol.ab_eip,
-                Timeout = TimeSpan.FromSeconds(Timeout)
-            };
+                tag = _tags.GetOrAdd(tagName, key => new Tag<M, T>()
+                {
+                    Name = key,
+                    Gateway = _ipAddress,
+                    Path = _path,
+                    PlcType = PlcType.ControlLogix,
+                    Protocol = Protocol.ab_eip,
+                    Timeout = TimeSpan.FromSeconds(Timeout)
+                }) as Tag<M, T>;
+            }
 
             // Sanity Check, only support 3 dims in arrays for now
             if (arrayDim.Length > 3)
@@ -1094,10 +1105,8 @@ namespace clx.libplctag.NET
 
             try
             {
-                await tag.InitializeAsync().ConfigureAwait(false);
                 tag.Value = value;
                 await tag.WriteAsync().ConfigureAwait(false);
-                tag.Dispose();
                 return new Response<dynamic>(tagName, "Success");
             }
             catch (Exception e)
@@ -1750,6 +1759,7 @@ namespace clx.libplctag.NET
             if (temp is IDisposable disposable)
                 disposable.Dispose();
         }
+        
         public void Dispose()
         {
             foreach (var key in _tags.Keys)
