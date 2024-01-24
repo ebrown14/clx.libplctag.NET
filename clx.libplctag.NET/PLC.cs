@@ -4,9 +4,11 @@ using libplctag.NativeImport;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace clx.libplctag.NET
@@ -901,22 +903,7 @@ namespace clx.libplctag.NET
 
         public async Task<Response<T>> ReadTag<M, T>(string tagName) where M : IPlcMapper<T>, new()
         {
-
-            Tag<M, T> tag;
-            if (_tags.TryGetValue(tagName, out var temp))
-                tag = temp as Tag<M, T>;
-            else
-            {
-                tag = _tags.GetOrAdd(tagName, key => new Tag<M, T>()
-                {
-                    Name = key,
-                    Gateway = _ipAddress,
-                    Path = _path,
-                    PlcType = PlcType.ControlLogix,
-                    Protocol = Protocol.ab_eip,
-                    Timeout = TimeSpan.FromSeconds(Timeout)
-                }) as Tag<M, T>;
-            }
+            Tag<M, T> tag = await GetOrAddTagToCacheAsync<M, T>(tagName);
             
             try
             {
@@ -934,21 +921,7 @@ namespace clx.libplctag.NET
         public async Task<Response<T>> ReadTag<M, T>(string tagName, int[] arrayDim = null)
             where M : IPlcMapper<T>, new()
         {
-            Tag<M, T> tag;
-            if (_tags.TryGetValue(tagName, out var temp))
-                tag = temp as Tag<M, T>;
-            else
-            {
-                tag = _tags.GetOrAdd(tagName, key => new Tag<M, T>()
-                {
-                    Name = key,
-                    Gateway = _ipAddress,
-                    Path = _path,
-                    PlcType = PlcType.ControlLogix,
-                    Protocol = Protocol.ab_eip,
-                    Timeout = TimeSpan.FromSeconds(Timeout)
-                }) as Tag<M, T>;
-            }
+            Tag<M, T> tag = await GetOrAddTagToCacheAsync<M, T>(tagName);
 
             // Sanity Check, only support 3 dims in arrays for now
             if (arrayDim.Length > 3)
@@ -985,21 +958,7 @@ namespace clx.libplctag.NET
 
         public async Task<Response<T>> WriteTag<M, T>(string tagName, T value) where M : IPlcMapper<T>, new()
         {
-            Tag<M, T> tag;
-            if (_tags.TryGetValue(tagName, out var temp))
-                tag = temp as Tag<M, T>;
-            else
-            {
-                tag = _tags.GetOrAdd(tagName, key => new Tag<M, T>()
-                {
-                    Name = key,
-                    Gateway = _ipAddress,
-                    Path = _path,
-                    PlcType = PlcType.ControlLogix,
-                    Protocol = Protocol.ab_eip,
-                    Timeout = TimeSpan.FromSeconds(Timeout)
-                }) as Tag<M, T>;
-            }
+            Tag<M, T> tag = await GetOrAddTagToCacheAsync<M, T>(tagName);
 
             try
             {
@@ -1016,21 +975,7 @@ namespace clx.libplctag.NET
         public async Task<Response<string>> WriteTag<M, T>(string tagName, T value, int[] arrayDim = null)
             where M : IPlcMapper<T>, new()
         {
-            Tag<M, T> tag;
-            if (_tags.TryGetValue(tagName, out var temp))
-                tag = temp as Tag<M, T>;
-            else
-            {
-                tag = _tags.GetOrAdd(tagName, key => new Tag<M, T>()
-                {
-                    Name = key,
-                    Gateway = _ipAddress,
-                    Path = _path,
-                    PlcType = PlcType.ControlLogix,
-                    Protocol = Protocol.ab_eip,
-                    Timeout = TimeSpan.FromSeconds(Timeout)
-                }) as Tag<M, T>;
-            }
+            Tag<M, T> tag = await GetOrAddTagToCacheAsync<M, T>(tagName);
 
             // Sanity Check, only support 3 dims in arrays for now
             if (arrayDim.Length > 3)
@@ -1067,21 +1012,7 @@ namespace clx.libplctag.NET
         public async Task<Response<dynamic>> DWriteTag<M, T>(string tagName, T value, int[] arrayDim = null)
             where M : IPlcMapper<T>, new()
         {
-            Tag<M, T> tag;
-            if (_tags.TryGetValue(tagName, out var temp))
-                tag = temp as Tag<M, T>;
-            else
-            {
-                tag = _tags.GetOrAdd(tagName, key => new Tag<M, T>()
-                {
-                    Name = key,
-                    Gateway = _ipAddress,
-                    Path = _path,
-                    PlcType = PlcType.ControlLogix,
-                    Protocol = Protocol.ab_eip,
-                    Timeout = TimeSpan.FromSeconds(Timeout)
-                }) as Tag<M, T>;
-            }
+            Tag<M, T> tag = await GetOrAddTagToCacheAsync<M, T>(tagName);
 
             // Sanity Check, only support 3 dims in arrays for now
             if (arrayDim.Length > 3)
@@ -1753,6 +1684,30 @@ namespace clx.libplctag.NET
             }
         }
 
+        private async Task<Tag<M, T>> GetOrAddTagToCacheAsync<M, T>(string tagName, CancellationToken cancellationToken = default)
+            where M : IPlcMapper<T>, new()
+        {
+            Tag<M, T> tag;
+            if (_tags.TryGetValue(tagName, out var temp))
+                tag = temp as Tag<M, T>;
+            else
+            {
+                Console.WriteLine("Creating {0} for {1}", tagName, _ipAddress);
+                tag = _tags.GetOrAdd(tagName, key => new Tag<M, T>()
+                {
+                    Name = key,
+                    Gateway = _ipAddress,
+                    Path = _path,
+                    PlcType = PlcType.ControlLogix,
+                    Protocol = Protocol.ab_eip,
+                    Timeout = TimeSpan.FromSeconds(Timeout)
+                }) as Tag<M, T>;
+                if (tag is not null)
+                    await tag.InitializeAsync(cancellationToken).ConfigureAwait(false);
+            }
+
+            return tag;
+        }
         public void ReleaseTagIfExists(string tagName)
         {
             if (!_tags.TryRemove(tagName, out var temp)) return;
