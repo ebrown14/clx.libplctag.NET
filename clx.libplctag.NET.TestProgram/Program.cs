@@ -20,21 +20,39 @@ namespace clx.libplctag.NET.TestProgram
             /*
              * This is just a playground for testing the library.
              */
+            
+            var myTag = new Tag<RealPlcMapper, float>()
+            {
+                Name = "LT_41010.PV",
+                Gateway = "10.141.4.69",
+                Path = "1,0",
+                PlcType = PlcType.ControlLogix,
+                Protocol = Protocol.ab_eip,
+                Timeout = TimeSpan.FromSeconds(60),
+            };
+            await myTag.InitializeAsync();
 
-            var myPLC = new PLC("");
+            for (int j = 0; j < 5; j++)
+            {
+                await myTag.ReadAsync();
+                Console.WriteLine(myTag.Value);
+            }
+
+            var myPLC = new PLC("10.141.4.69");
+            myPLC.Timeout = 30;
             int i = 0;
             while (i < 5)
             {
-                var result = await myPLC.Read("", TagType.Real).ConfigureAwait(false);
+                var result = await myPLC.DRead("LT_41010.PV", TagType.Real).ConfigureAwait(false);
                 Console.WriteLine(result);
 
-                var result0 = await myPLC.Read("", TagType.Real);
+                var result0 = await myPLC.Read("PT_1001C.PV", TagType.Real);
                 Console.WriteLine(result0);
 
-                var result2 = await myPLC.Read("", TagType.Real);
+                var result2 = await myPLC.Read("PT_1001T.PV", TagType.Real);
                 Console.WriteLine(result2);
 
-                var result3 = await myPLC.Read("", TagType.Real);
+                var result3 = await myPLC.Read("PT_1001F.PV", TagType.Real);
                 Console.WriteLine(result3);
 
                 i++;
